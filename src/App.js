@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-import T from './table-ant'
+import T from './table-ele'
 
 class App extends Component {
   render() {
