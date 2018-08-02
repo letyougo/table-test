@@ -1,168 +1,144 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom'
-
-function insertAfter(newElement,targetElement){
-  let parent=targetElement.parentNode;
-  if(parent.lastChild===targetElement){
-    parent.appendChild(newElement);
-  }else{
-    parent.insertBefore(newElement,targetElement.nextSibling);
-  }
-}
+import classNames from 'classnames'
 
 
-class Header extends Component{
-  render(){
-    let {columns} = this.props
-
-
-
-
-    //表头可以传组件，如果是文本就渲染文本
-    let nodes = columns.map(({title,dataIndex,key},index)=>{
-      return (
-        <td key={'head-'+index}>{typeof title==='function'?title():title}</td>
-      )
-    })
-
-    return (
-      <thead>
-        <tr>
-          {nodes}
-        </tr>
-      </thead>
-    )
-  }
-}
-
-class Body extends Component{
-  render(){
-    let {columns,dataSource} = this.props
-
-    let nodes = dataSource.map((item,i)=>{
-      let tr
-
-      if(item.expand){
-        tr = <td colSpan={dataSource.length}>{item.expand(undefined,item,i)}</td>
-      }else {
-        tr =  columns.map(({title,dataIndex,key,render},j)=>{
-          return <td key={'key-'+j} key={'td-'+i+'-'+j}>{render(item[dataIndex],item,i)}</td>
-        })
-      }
-
-
-      return <tr key={item.key}>{tr}</tr>
-    })
-
-
-
-    return (
-      <tbody>
-      {nodes}
-      </tbody>
-    )
-  }
-}
-
+import {FiexHeader,Header} from './header'
+import Body from './body'
 
 
 class Table extends Component {
-
-
-
   constructor(props){
     super(props)
-    let {columns,selectedKey,dataSource} = props
+
+    //只有dataSource,columns重造
+    let {dataSource,columns,...prop} = props
     this.state = {
-      columns:columns,
-      dataSource
+      dataSource,
+      columns
     }
-  }
-
-
-  openRow(i){
-    let {columns} = this.state
-    columns[i].toggle = !columns[i].toggle
-
-    this.setState({columns})
-  }
-
-
-  getExpand=(text,record,index,expand)=>{
-    let {insertRow} = this
-
-
-
-    return <div onClick={(e)=>insertRow(text,record,index,expand)} key={'expand-'+index} ref={'expand-'+index}>action</div>
-  }
-
-  insertRow=(text,record,index,expand)=>{
-    let tr = this.refs.table.querySelectorAll('tbody tr')[index]
-    let {columns,dataSource} = this.state
-
-    let open = eval(tr.getAttribute('open'))
-
-    this.openRow(index)
-    if(!open){
-      // let row = {
-      //   key:'expand-'+(index+1),
-      //   expand,
-      //
-      // }
-      // dataSource.splice(index+1,0,row)
-
-
-      let newRow = document.createElement('tr')
-      insertAfter(newRow,tr)
-      ReactDOM.render(expand(text,record,index), newRow)
-      tr.setAttribute('open',true)
-
-
-
-    }else {
-      // dataSource.splice(index+1,1)
-
-      // console.log(dataSource)
-      let row = this.refs.table.querySelectorAll('tbody tr')[index+1]
-      this.refs.table.querySelector('tbody').removeChild(row)
-      ReactDOM.unmountComponentAtNode(row)
-      tr.setAttribute('open',false)
-
-    }
-    // this.setState({dataSource})
   }
 
   render() {
-    let {columns,dataSource} = this.state
+    let {columns,dataSource} = this.state,
+      {header=[],loading = false,rowSelection,scroll={x:undefined,y:undefined}} = this.props,
+      {addExpand} = this
 
-    let {getExpand} = this
-    //给属性添加默认值，防止用户漏传参数
-
-    let col = columns.map((item,index)=>{
+    columns = columns.map((item,index)=>{
       item.title = item.title || item.dataIndex
       item.key = item.key || item.dataIndex
       item.render = item.render || function(text,record,index){return text}
-
-      if(item.expand){
-        item.render=(text,record,index)=>getExpand(text,record,index,item.expand)
-      }
-
       return item
     })
-    return (
-      <div className="table">
-        <table border="1" ref={'table'}>
-          <Header columns={columns}/>
-          <Body columns={columns} dataSource={dataSource} ref='body'/>
-        </table>
 
+    //固定列
+    let fixedColumns = columns.filter(({fixed})=>!!fixed).map(item=>{
+      item.dir = item.fixed
+      delete item.fixed
+      return item
+    })
+
+    //多选配置
+    if(rowSelection){
+      let {selectedRowKeys=[],onChange} = rowSelection
+      columns.unshift({
+        dataIndex:'name',
+        width:'50px',
+        title:()=>{
+          let {getCheckboxProps=(record)=>({ disabled:false,dataName:record.key })} = rowSelection
+          let data = dataSource.filter(record=>!getCheckboxProps(record).disabled)
+          return (
+
+            <input
+              type={'checkbox'}
+              checked={selectedRowKeys.length === data.length}
+              onChange={(e)=>{
+                if(e.target.checked){
+                  onChange(data.map(record=>record.key),data)
+                }else {
+                  onChange([],[])
+                }}
+              }
+            />
+          )
+        },
+        render:(text,record,index)=>{
+          let {getCheckboxProps=(record)=>({ disabled:false,dataName:record.key })} = rowSelection
+          //todo dataName 是干嘛的不明白
+          let {disabled,dataName} = getCheckboxProps(record)
+            return (
+              <input
+                type={'checkbox'}
+                checked={selectedRowKeys.includes(record.key)}
+                disabled={disabled}
+                onChange={(e)=>{
+                  let rows = []
+                  let selected = selectedRowKeys.includes(record.key)
+                  if(selected){
+                    selectedRowKeys.splice(selectedRowKeys.indexOf(record.key),1)
+                  }else {
+                    rows.push(dataSource[index])
+                    selectedRowKeys.push(record.key)
+                  }
+                  onChange(selectedRowKeys,rows)
+                }}
+              />
+            )
+          }
+      })
+    }
+
+    return (
+      <div className={classNames('table')}>
+        <div className={classNames('table-content')}>
+
+          {scroll.y ? <div className={classNames('table-head')}>
+              <FiexHeader columns={columns} scroll={scroll} dataSource={dataSource}/>
+            </div> : undefined
+          }
+
+          <div className={classNames('table-body')}>
+            <table border="1" >
+              <colgroup>
+                {columns.map(({width},index)=><col style={{width,minWidth:'100px'}} key={'col-'+index}></col>)}
+              </colgroup>
+              {
+                scroll.y ? null :
+                  <Header columns={columns}/>
+              }
+              {dataSource.length ?
+                <Body columns={columns} dataSource={dataSource} addExpand={addExpand} scroll={scroll}/> : <tbody><tr>数据为空</tr></tbody>}
+
+              {fixedColumns.length ?
+                <Table columns={fixedColumns} dataSource={dataSource}/> : null
+              }
+
+            </table>
+            {loading ? <div className={'loading'}>加载中...</div> : null}
+          </div>
+        </div>
       </div>
     );
   }
 
-  componentWillReceiveProps(state){
-    // console.log(state)
-    // this.setState({dataSource:state.dataSource})
+  addExpand=(e)=>{
+    let {index,open} = e.target.dataset
+    index = parseInt(index)
+    open = eval(open)
+
+    let {dataSource} = this.props
+    if(!open){
+      dataSource.splice(index+1,0,{expand:true,parent:index})
+    }else {
+      dataSource.splice(index+1,1)
+    }
+    e.target.dataset.open = !open
+    this.setState({dataSource})
+  };
+
+  componentWillReceiveProps({dataSource,columns,...prop}){
+    //只有dataSource,columns重造
+    this.setState({dataSource,columns})
   }
 }
 

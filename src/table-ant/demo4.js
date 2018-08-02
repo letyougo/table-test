@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import Table from './table'
-
+import pover from './pover'
 
 class Demo extends Component {
 
@@ -13,26 +13,33 @@ class Demo extends Component {
       age: 1,
       address: '西湖区湖底公园1号',
       selected:false,
-    }, {
+      edit:false,
+    },
+
+
+      {
       key: '2',
       name: '胡彦祖',
       age: 2,
       address: '西湖区湖底公园1号',
-      selected:true
+      selected:true,
+        edit:false,
     },
       {
         key: '3',
         name: '胡彦祖',
         age: 3,
         address: '西湖区湖底公园1号',
-        selected:true
+        selected:true,
+        edit:false,
       },
       {
         key: '4',
         name: '胡彦祖',
         age: 0,
         address: '西湖区湖底公园1号',
-        selected:true
+        selected:true,
+        edit:false,
       }],
     value:'11'
   }
@@ -45,7 +52,7 @@ class Demo extends Component {
   }
 
   change=(index,key,value)=>{
-
+    console.log('change',)
     let {dataSource} = this.state
     dataSource[index][key]=value
     this.setState({dataSource:JSON.parse(JSON.stringify(dataSource))})
@@ -68,34 +75,17 @@ class Demo extends Component {
             [
               {
                 title:()=><div onClick={sortByAge}>展开 </div>,
-                expand:(text,recorde,index)=>{
-                  console.log(recorde,index,'---iam expad')
+                type:'expand',
+                render:(text,record,index)=>{
+                  console.log('in render ',record)
                   return (
                     <div>
-                      <form>
-                        <h3>编辑</h3>
-                        <p>
-                          <label>名字{dataSource[index].name}</label>{value}
-                          <input value={value} onChange={(e)=>{
-                            console.log(e.target.value,value)
-                            that.setState({value:e.target.value})
-                          }}/>
-                        </p>
-                        <p>
-                          <label>年龄{dataSource[index].age}</label>
-                          <input value={dataSource[index].age} onChange={(e)=>change(index,'age',e.target.value)}/>
-                        </p>
-                        <p>
-                          <button>确定</button>
-                        </p>
-                      </form>
+                        sss
                     </div>
                   )
                 }
-
               },
               {
-
                 title:()=><div onClick={sortByAge}>全选或者反选 </div>,
                 render:(text)=><input type={'checkbox'} checked={text}/>
               },
@@ -103,32 +93,77 @@ class Demo extends Component {
               {
                 dataIndex:'name',
                 key:'name',
+
+              },
+              {
+                title:()=><div onClick={sortByAge} > 点击我，年龄排序 </div>,
+                dataIndex:'age',
+                key:'age',
                 render(text,record,index){
                   return (
-                    <a href='#'>{text}-{index}</a>
-                  )
-                },
-                header(text,record,index){
-                  return (
-                    <div>
-
+                    <div onClick={(e)=>that.pover2(e,index)}>
+                      {text}
                     </div>
                   )
                 }
+
               },
               {
-                title:()=><div onClick={sortByAge}> 点击我，年龄排序 </div>,
-                dataIndex:'age',
-                key:'age',
-              },
+                title:'操作',
+                fixed:'left',
+                render:(text,record,index)=><div>
+                  <div>
+
+                    <a href='javascript:void(0)' onClick={(e)=>change(index,'edit',!record.edit)}>edit</a>
+                    &nbsp;&nbsp;
+                    <a href='javascript:void(0)' onClick={(e)=>that.pover(e,index)}>删除</a>
+                  </div>
+                </div>
+              }
             ]
           }
 
 
           dataSource={dataSource}
+
+          header={[
+            {title:'左边',span:2},
+            {title:'右边',span:3}
+          ]}
         />
       </div>
     );
+  }
+
+  pover2=(e,index)=>{
+
+    let that = this
+    let {dataSource} = that.state
+    pover({
+      title: '请输入内容',
+      action:'input',
+      target:e.target,
+      onOk(value){
+        dataSource[index].age = value
+
+        that.setState({dataSource})
+      }
+    })
+  }
+
+  pover=(e,index)=>{
+
+    let that = this
+    pover({
+      title: <div>ssss:ok</div>,
+      // action:'input',
+      target:e.target,
+      onOk(value){
+        let {dataSource} = that.state
+        dataSource.splice(index,1)
+        that.setState({dataSource})
+      }
+    })
   }
 }
 
