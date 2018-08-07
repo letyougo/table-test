@@ -93,7 +93,7 @@ export default class Demo1 extends Component{
 
         <h3>antd</h3>
 
-        <Table dataSource={data} columns={columns} bordered={true}/>
+        {/*<Table dataSource={data} columns={columns} bordered={true}/>*/}
       </div>
     )
   }

@@ -46,7 +46,7 @@ export class Header extends Component{
 
 
     //固定表头分组，这里好难。。
-    console.log(headerColumns.length,'headerColumns.length')
+
     if(headerColumns && headerColumns.length>1){
       console.log('walk pu')
       nodes = headerColumns.map(columns=>{
