@@ -10,6 +10,8 @@ const getScrollContent = ()=>{
 }
 
 
+
+
 export default class Wrapper extends Component{
 
   constructor(props){
@@ -24,7 +26,7 @@ export default class Wrapper extends Component{
     }
   }
 
-  getScrollXContent(columns){
+  getScrollXContent(columns,headerColumns){
 
     let
         leftFiexColumns,
@@ -49,7 +51,7 @@ export default class Wrapper extends Component{
       let scrollTable = [
         <div className={'table-scroll'}>
           <div className={'table-body'} style={{overflowX:'scroll'}}>
-            <Table style={{minWidth:scroll.x+'px'}} { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand})  }  />
+            <Table style={{minWidth:scroll.x+'px'}} { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand},{headerColumns})  }  />
           </div>
         </div>
       ];
@@ -86,7 +88,7 @@ export default class Wrapper extends Component{
     }
   }
 
-  getScrollYContent(columns){
+  getScrollYContent(columns,headerColumns){
     let {dataSource} = this.state,
       {scroll={x:undefined,y:undefined}} = this.props;
 
@@ -97,7 +99,7 @@ export default class Wrapper extends Component{
             <Table  { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand,body:false})  }  />
           </div>
           <div className={'table-body'} style={{maxHeight:scroll.y + 'px',overflowY:'scroll'}}>
-            <Table  { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand,head:false})  }  />
+            <Table  { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand,head:false},{headerColumns})  }  />
           </div>
         </div>
       </div>
@@ -106,7 +108,7 @@ export default class Wrapper extends Component{
 
 
 
-  getScrollXYContent(){
+  getScrollXYContent(headerColumns){
 
     let {
       leftFiexColumns,
@@ -127,7 +129,7 @@ export default class Wrapper extends Component{
             <Table style={{width:scroll.x+'px'}} { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand})  } body={false}/>
           </div>
           <div className={'table-body'} style={{maxHeight:scroll.y+'px',overflowX:'scroll'}}>
-            <Table style={{width:scroll.x+'px'}} { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand})  }  header={false}/>
+            <Table style={{width:scroll.x+'px'}} { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand},{headerColumns})  }  header={false}/>
           </div>
         </div>
       ];
@@ -168,18 +170,16 @@ export default class Wrapper extends Component{
         </div>
       )
     }
-
   }
 
-  getBaseContent(columns){
+  getBaseContent(columns,headerColumns){
     let {dataSource} = this.state,
       {scroll={x:undefined,y:undefined}} = this.props;
     return (
       <div className={'table-content'}>
         <div className={'table-body'}>
-          <Table  { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand})  }  />
+          <Table  { ...Object.assign({},{...this.props},{columns},{dataSource},{addExpand:this.addExpand},{headerColumns})  }  />
         </div>
-
       </div>
     )
   }
@@ -207,7 +207,6 @@ export default class Wrapper extends Component{
     //讲表格重新排序，并且去掉slelect ，因为是null
     columns = [...leftFiexColumns,...commanColumns,...rightFixColumns].filter(item=>item!==select).filter(col=>!!col);
 
-    console.log(leftFiexColumns,commanColumns,rightFixColumns,'left-middle-right')
     return {
       leftFiexColumns,
       rightFixColumns,
@@ -217,7 +216,77 @@ export default class Wrapper extends Component{
 
   getHeaderGroup(columns) {
 
-    return [1, 2]
+    let bodyColumns = [],headerColumns=[]
+    let deepMap = (columns,parent)=>{
+      for(var key in columns){
+        columns[key].depth = parent.depth+1
+        let children = columns[key].children
+        if(children && children.length>0){
+          columns[key].isLast = false
+          deepMap(children,columns[key])
+            // delete columns[key].children
+        }else {
+          columns[key].render =columns[key].render ||  function(text,record,index){return text}
+          columns[key].isLast = true
+
+        }
+        bodyColumns.push(columns[key])
+      }
+    }
+
+    deepMap(columns,{depth:0,children:[]})
+
+    let getNum=(obj)=>{
+      let num =0
+      var getn = (list)=>{
+        for(var i=0;i<list.length;i++){
+          let item = list[i]
+          if(item.isLast){
+            num++
+          }
+          if(item.children){
+            getn(item.children)
+          }
+        }
+      }
+      getn([obj])
+      return num
+
+    }
+
+    for(var key in bodyColumns){
+
+      bodyColumns[key].headColSpan = getNum(bodyColumns[key],1)
+    }
+
+    console.log(bodyColumns,'body-columns')
+
+    let a = [...bodyColumns].sort((pre,next)=>(pre.depth-next.depth))
+
+
+    let max = [...bodyColumns].sort((pre,next)=>(next.depth-pre.depth))[0].depth
+
+
+    //设置header-rowSpan
+    let bd = bodyColumns.map(item=>{
+
+      if(item.isLast){
+        item.headRowSpan = max+1 - item.depth
+      }
+
+      return item
+    })
+
+
+
+
+    for(var i=1;i<max+1;i++){
+      let arr = bd.filter(({depth})=>depth===i)
+      headerColumns.push(arr)
+    }
+
+    bodyColumns = bodyColumns.filter(({isLast})=>isLast)
+    return [headerColumns,bodyColumns]
 
   }
 
@@ -230,7 +299,7 @@ export default class Wrapper extends Component{
       item.title = item.title || item.dataIndex
       item.key = item.key || item.dataIndex
 
-      item.render = item.render || function(text,record,index){return text};
+      // item.render = item.render || function(text,record,index){return text};
 
       return item
     });
@@ -239,7 +308,9 @@ export default class Wrapper extends Component{
     //表头组columns处理
 
     let [headerColumns,bodyColumns] = this.getHeaderGroup(columns)
-    console.log(headerColumns,bodyColumns,'sss','ttt')
+    columns = bodyColumns
+
+
 
     if(rowSelection){
       let {selectedRowKeys=[],onChange} = rowSelection
@@ -296,26 +367,25 @@ export default class Wrapper extends Component{
     //固定列
     let content
 
-    console.log('hello',scroll.x,scroll.y)
     //不滚动
     if(!scroll.x && !scroll.y){
-      content = this.getBaseContent(columns)
+      content = this.getBaseContent(columns,headerColumns)
     }
 
     //列滚动
     if(scroll.x && !scroll.y){
       //将多选框放到最左边
-      content = this.getScrollXContent(columns)
+      content = this.getScrollXContent(columns,headerColumns)
     }
 
     if(scroll.y && !scroll.x){
-      content =this.getScrollYContent(columns)
+      content =this.getScrollYContent(columns,headerColumns)
     }
 
     if(scroll.x && scroll.y){
 
       //todo x和y同时滚动有bug
-      content = this.getBaseContent(columns)
+      content = this.getBaseContent(columns,headerColumns)
       // content = this.getScrollXYContent()
     }
 

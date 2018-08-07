@@ -52,6 +52,7 @@ export default class Body extends Component{
           if(parseInt(rowSpan) !== 0){
             tr.push(<td  rowSpan={rowSpan} colSpan={colSpan} data-span={colSpan} key={'td-'+k+'-'+j} style={{width:item.width+'px'}}>{td}</td>)
           }else {
+            console.log(rowSpan,'null rosspan')
             tr.push(null)
           }
           j = j + colSpan

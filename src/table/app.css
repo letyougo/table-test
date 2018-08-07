@@ -28,6 +28,9 @@ table,tr,td,thead,tbody{
     text-align: center;
     color: #000000;
 }
+.table th{
+    text-align: center;
+}
 
 .table-body table tr:nth-child(2n+1){background-color:#f2f2f2;}
 .table-fixed{

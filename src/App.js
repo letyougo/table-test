@@ -39,7 +39,7 @@ class App extends Component {
         {/*<T7></T7>*/}
 
         <Demo1/>
-        <Demo2/>
+        {/*<Demo2/>*/}
       </div>
     );
   }
